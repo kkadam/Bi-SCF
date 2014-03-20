@@ -3,6 +3,11 @@
        integer, parameter :: numz = 256
        integer, parameter :: numphi = 512
 
+       real, parameter :: n1 = 1.5
+       real, parameter :: nc1 = 4.0
+       real, parameter :: mu1 = 2.0
+       real, parameter :: muc1 = 1.0
+
 !Primary-secondary boundary 
        integer, parameter :: phi1 = 127             !0.248
        integer, parameter :: phi2 = 129             !0.252
@@ -10,7 +15,7 @@
        integer, parameter :: phi4 = 385             !0.752 
        
 !Maximum iterations
-       integer, parameter :: maxit = 10
+       integer, parameter :: maxit = 5
        
 !Mystery parameters for Poisson Solver
        integer, parameter :: maxterm = 10  !spherical harmonic moment L for boundary potential

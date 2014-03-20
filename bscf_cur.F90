@@ -5,18 +5,19 @@
        real, dimension(numr,numz,numphi) :: rho, pot, pot_it, pot_old, h
        real, dimension(numr,numz,numphi) :: temp, rchpot
        real, dimension(numr,numphi) :: psi
-       real, dimension(maxit) :: c1, c2, mass1, mass2, omsq, hm1, hm2
+       real, dimension(maxit) :: c1, c2, mass1, mass2, omsq, hm1, hm2, cc1
        real, dimension(numr) :: r, rhf
        real, dimension(numz) :: z, zhf
        real, dimension(numphi) :: phi, sine, cosine
        real :: com, pi, rhom1, rhom2, ret1, ret2, dr, dz, dphi, dpot, dpsi
-       real :: factor, gamma, n1, cnvgom, cnvgc1, cnvgc2, cnvgh1, cnvgh2
+       real :: factor, gamma, cnvgom, cnvgc1, cnvgc2, cnvgh1, cnvgh2
        real :: s1, s2, stot, t1, t2, ttot, w1, w2, wtot, j1, j2, jtot
        real :: e1, e2, etot, en1, en2, entot, pm1, pm2, virialerr, virialerr1
        real :: virialerr2, eps, position, separation, xavg1, xavg2
        real :: yavg1, yavg2, kappa1, kappa2, vol1, vol2, reff1, reff2
        real :: rchmax, rchmin, xcrit, rpotcrit, volr1, volr2, reffr1, reffr2
-       real :: rchtest, curvature, pottmp1, pottmp2, psitmp1, psitmp2, omega
+       real :: rchtest, curvature, omega
+       real :: pot_a, pot_b, pot_c, pot_d, psi_a, psi_b, psi_c, psi_d
        real :: kepler, period, epsilon, rho_max_temp
        real :: timef, stime, ftime
        integer :: i, j, k, q, iam
@@ -37,11 +38,12 @@
        common /grid/ r, z, rhf, zhf, dd3, dd4, dd5, dd6, dd7, dd8
 
 !  Bipolytrope
-       real :: n2, mu1, mu3, c3
-       integer :: rd
-
-       call cpu_time(stime)
+	integer :: rd
+       double precision :: phid, zd, rho_c1d, rho_1d, omega_sq_d, &
+       h_c1d, h_e1d, norm1
        
+       call cpu_time(stime)
+      
 !  Initialize the grid
        grav = 1.0
        pi = acos(-1.0)
@@ -53,6 +55,7 @@
        z(1) = - dz
        zhf(1) = - dz/2.0 
        phi(1) = 0.0
+       
        do i = 2,numr
           r(i) = r(i-1) + dr 
           rhf(i) = rhf(i-1) + dr
@@ -73,12 +76,15 @@
        phia = 1
        phib = 1
        phic = numphi/2 + 1
+       phid = 1
        za = 2
        zb = 2
        zc = 2
+       zd = 2
        eps = 2.0e-4
-       n1 = 1.5
-       n2=2.0
+       
+       
+       
        rmax = numr - 8
        gamma = 1.0 + 1.0/n1
        epsilon = 1.0e-5
@@ -91,7 +97,7 @@
        hm2 = 0.0
        c1 = 0.0
        c2 = 0.0
-
+       cc1 = 0.0
 
 ! generate the initial model
        select case(initial) 
@@ -255,6 +261,7 @@
        enddo
        com = factor * com / (mass1(1) + mass2(1))
 
+
        
 !  START OF THE ITERATION
        do q = 2,maxit		
@@ -273,36 +280,54 @@
              call pot3(npoint,iprint,isym)
              pot_it = 0.5*(pot + pot_old)
              pot_old = pot
-          endif 
+          endif
           
-          pottmp1 = 0.5*(pot_it(ra,za,phia) + pot_it(ra-1,za,phia))
-          pottmp2 = 0.5*(pot_it(rb,zb,phib) + pot_it(rb+1,zb,phib))
-          dpot = pottmp1 - pottmp2
-          
-          do i = 1,numphi
-             do j = 2,numr
-                psi(j,i) = -0.5*( (rhf(j)*cosine(i)-com)**2 +        &
-                           rhf(j)*rhf(j)*sine(i)*sine(i))
-             enddo
+       do i = 1,numphi
+          do j = 2,numr
+             psi(j,i) = -0.5*( (rhf(j)*cosine(i)-com)**2 +        &
+                        rhf(j)*rhf(j)*sine(i)*sine(i))
           enddo
+       enddo       
+       
           
-          psitmp1 = 0.5*(psi(rb,phib) + psi(rb+1,phib))
-          psitmp2 = 0.5*(psi(ra,phia) + psi(ra-1,phia))
-          dpsi = psitmp1 - psitmp2 
-          omsq(q) = dpot/dpsi
+          pot_a = 0.5*(pot_it(ra,za,phia) + pot_it(ra-1,za,phia))
+          pot_b = 0.5*(pot_it(rb,zb,phib) + pot_it(rb+1,zb,phib))
+          pot_c = 0.5*(pot_it(rc,zc,phic) + pot_it(rc+1,zc,phic))
+          pot_d = 0.5*(pot_it(rd,zd,phid) + pot_it(rd+1,zd,phid))
+          psi_a = 0.5*(psi(ra,phia) + psi(ra-1,phia))          
+          psi_b = 0.5*(psi(rb,phib) + psi(rb+1,phib))                    
+          psi_c = 0.5*(psi(rc,phic) + psi(rc+1,phic))
+          psi_d = 0.5*(psi(rd,phid) + psi(rd+1,phid))
           
-          pottmp1 = 0.5*(pot_it(rb,zb,phib) + pot_it(rb+1,zb,phib))
-          psitmp1 = 0.5*(psi(rb,phib) + psi(rb+1,phib))
-          pottmp2 = 0.5*(pot_it(rc,zc,phic) + pot_it(rc+1,zc,phic))
-          psitmp2 = 0.5*(psi(rc,phic) + psi(rc+1,phic))
-          c1(q) = pottmp1 + omsq(q)*psitmp1
-          c2(q) = pottmp2 + omsq(q)*psitmp2
+          rho_1d = 0.5*(rho(rd,zd,phid) + rho(rd+1,zd,phid))
+          rho_c1d=rho_1d*muc1/mu1
 
+          
+          omsq(q) = - (pot_a-pot_b)/(psi_a-psi_b)
+                   
+          c1(q) = pot_b + omsq(q)*psi_b
+          c2(q) = pot_c + omsq(q)*psi_c
+
+          
+          h_e1d = c1(q) - pot_d - omsq(q)*psi_d
+          h_c1d = h_e1d * (nc1+1)/(n1+1)*mu1/muc1          
+          
+          cc1(q) = h_c1d + pot_d+ omega_sq_d*psi_d 
+          
+ print*, "rho_1d = ", rho_1d, "rho_c1d = ", rho_c1d
+ print*, "omsq(q) = ", omsq(q), "c1(q) = ", c1(q)
+ print*,  "c2(q) = ", c2(q)
+ print*, "h_e1d = ",h_e1d, "h_c1d = ", h_c1d
+ print*, "cc1(q) = ", cc1(q)
 !  Calculate new enthalpy field and max enthalpies and their positions
           do i = 1,phi1+1
              do j = 2,numz
                 do k = 2,rmax
-                   h(k,j,i) = c1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)
+                   if (rho(k,j,i).gt.rho_1d) then
+                      h(k,j,i) = cc1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)
+                   else
+                      h(k,j,i) = c1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)   
+                   endif
                    if(h(k,j,i).gt.hm1(q)) then
                       hm1(q) = h(k,j,i)
                       rm1 = k
@@ -328,8 +353,12 @@
           do i = phi4,numphi
              do j = 2,numz
                 do k = 2,rmax
-                   h(k,j,i) = c1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)
-                   if(h(k,j,i).gt.hm1(q)) then 
+                   if (rho(k,j,i).gt.rho_1d) then
+                      h(k,j,i) = cc1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)
+                   else
+                      h(k,j,i) = c1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)   
+                   endif
+                   if(h(k,j,i).gt.hm1(q)) then
                       hm1(q) = h(k,j,i)
                       rm1 = k
                       zm1 = j
@@ -338,15 +367,25 @@
                 enddo
              enddo
           enddo 
+   
+          
+          norm1 = mu1/muc1*(h_c1d/hm1(q))**nc1        
 
+print*, "norm1", norm1
+print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
+          
 !  Calculate new density field from enthalpy field
           do i = 1,phi1+1
              do j = 2,numz
                 do k = 2,numr
                    if(h(k,j,i).gt.0.0) then
-                      rho(k,j,i) = rhom1*(h(k,j,i)/hm1(q))**n1
-                   else
-                      rho(k,j,i) = 0.0
+                      if (rho(k,j,i).gt.rho_1d) then	   
+                         rho(k,j,i) = rhom1*(h(k,j,i)/hm1(q))**nc1
+                      else
+                         rho(k,j,i) = rhom1*norm1*(h(k,j,i)/hm1(q))**n1
+                      endif
+                   else   
+                      rho(k,j,i) = 0.0	   
                    endif
                 enddo
              enddo
@@ -366,9 +405,13 @@
              do j = 2,numz
                 do k = 2,numr
                    if(h(k,j,i).gt.0.0) then
-                      rho(k,j,i) = rhom1*(h(k,j,i)/hm1(q))**n1
-                   else
-                      rho(k,j,i) = 0.0
+                      if (rho(k,j,i).gt.rho_1d) then	   
+                         rho(k,j,i) = rhom1*(h(k,j,i)/hm1(q))**nc1
+                      else
+                         rho(k,j,i) = rhom1*norm1*(h(k,j,i)/hm1(q))**n1
+                      endif
+                   else   
+                      rho(k,j,i) = 0.0	   
                    endif
                 enddo
              enddo
@@ -461,6 +504,31 @@
  10    continue
        qfinal = q
 
+       
+       
+       open(unit=10,file="star1")
+         do j=1,numz
+           do i=1,numr  
+             write(10,*) i,j,rho(i,j,1) 
+           enddo
+           write(10,*)
+         enddo
+       close(10)       
+       print*, "star1"
+       
+       open(unit=10,file="star2")
+         do j=1,numz
+           do i=1,numr  
+             write(10,*) i,j,rho(i,j,256) 
+           enddo
+           write(10,*)
+         enddo
+       close(10)       
+       
+       
+       
+       
+       
         !   Set an integer flag to indicate which star, 1 or 2, is the more massive
         primary = 1
         if (mass2(qfinal) .gt. mass1(qfinal)) then
@@ -775,6 +843,8 @@
        reffr1 = (0.75*volr1/pi)**0.3333333
        reffr2 = (0.75*volr2/pi)**0.3333333
 
+       
+
        call cpu_time(ftime)
 
        i = phic
@@ -898,14 +968,7 @@
        close(15) 
 
        
-       open(unit=10,file="star1")
-         do j=1,numz
-           do i=1,numr  
-             write(10,*) i,j,rho(i,j,1) 
-           enddo
-           write(10,*)
-         enddo
-       close(10)       
+
        
        open(unit=10,file="pot1")
          do j=1,numz
@@ -918,14 +981,7 @@
        
        
        
-       open(unit=10,file="star2")
-         do j=1,numz
-           do i=1,numr  
-             write(10,*) i,j,rho(i,j,256) 
-           enddo
-           write(10,*)
-         enddo
-       close(10) 
+ 
        
        open(unit=10,file="pot2")
          do j=1,numz
