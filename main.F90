@@ -7,7 +7,7 @@
        open(unit=11,file='output',form='formatted',status='unknown')
        open(unit=12,file='summary',form='formatted',status='unknown')
        
-         call binary_scf(iam,ra,rb,rc,rd,type,model_num,rhom1,rhom2)
+         call binary_scf(iam,ra,rb,rc,rd,re,type,model_num,rhom1,rhom2)
        
        close(11)
        close(12)

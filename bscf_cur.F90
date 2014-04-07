@@ -1,23 +1,23 @@
-       subroutine binary_scf(iam,ra,rb,rc,rd,initial,model_num,rhom1,rhom2) 
+       subroutine binary_scf(iam,ra,rb,rc,rd,re,initial,model_num,rhom1,rhom2) 
        implicit none 
        include 'startup.h' 
  
        real, dimension(numr,numz,numphi) :: rho, pot, pot_it, pot_old, h
        real, dimension(numr,numz,numphi) :: temp, rchpot
        real, dimension(numr,numphi) :: psi
-       real, dimension(maxit) :: c1, c2, mass1, mass2, omsq, hm1, hm2, cc1
+       real, dimension(maxit) :: c1, c2, mass1, mass2, omsq, hm1, hm2, cc1, cc2
        real, dimension(numr) :: r, rhf
        real, dimension(numz) :: z, zhf
        real, dimension(numphi) :: phi, sine, cosine
        real :: com, pi, rhom1, rhom2, ret1, ret2, dr, dz, dphi, dpot, dpsi
-       real :: factor, gamma, cnvgom, cnvgc1, cnvgc2, cnvgh1, cnvgh2
+       real :: factor, gamma1, gamma2, cnvgom, cnvgc1, cnvgc2, cnvgh1, cnvgh2
        real :: s1, s2, stot, t1, t2, ttot, w1, w2, wtot, j1, j2, jtot
        real :: e1, e2, etot, en1, en2, entot, pm1, pm2, virialerr, virialerr1
        real :: virialerr2, eps, position, separation, xavg1, xavg2
        real :: yavg1, yavg2, kappa1, kappa2, vol1, vol2, reff1, reff2
        real :: rchmax, rchmin, xcrit, rpotcrit, volr1, volr2, reffr1, reffr2
        real :: rchtest, curvature, omega
-       real :: pot_a, pot_b, pot_c, pot_d, psi_a, psi_b, psi_c, psi_d
+       real :: pot_a, pot_b, pot_c, pot_d, pot_e, psi_a, psi_b, psi_c, psi_d, psi_e
        real :: kepler, period, epsilon, rho_max_temp
        real :: timef, stime, ftime
        integer :: i, j, k, q, iam
@@ -38,9 +38,11 @@
        common /grid/ r, z, rhf, zhf, dd3, dd4, dd5, dd6, dd7, dd8
 
 !  Bipolytrope
-	integer :: rd
-       double precision :: phid, zd, rho_c1d, rho_1d, omega_sq_d, &
+	integer :: rd,re
+       double precision :: phid, zd, rho_c1d, rho_1d, &
        h_c1d, h_e1d, norm1
+       double precision :: phie, ze, rho_c2e, rho_2e, &
+       h_c2e, h_e2e, norm2
        
        call cpu_time(stime)
       
@@ -77,16 +79,19 @@
        phib = 1
        phic = numphi/2 + 1
        phid = 1
+       phie = numphi/2 + 1 
        za = 2
        zb = 2
        zc = 2
        zd = 2
+       ze = 2
        eps = 2.0e-4
        
        
        
        rmax = numr - 8
-       gamma = 1.0 + 1.0/n1
+       gamma1 = 1.0 + 1.0/n1
+       gamma2 = 1.0 + 1.0/n2
        epsilon = 1.0e-5
 
        dens_template = 'density'
@@ -98,6 +103,7 @@
        c1 = 0.0
        c2 = 0.0
        cc1 = 0.0
+       cc2 = 0.0
 
 ! generate the initial model
        select case(initial) 
@@ -294,25 +300,32 @@
           pot_b = 0.5*(pot_it(rb,zb,phib) + pot_it(rb+1,zb,phib))
           pot_c = 0.5*(pot_it(rc,zc,phic) + pot_it(rc+1,zc,phic))
           pot_d = 0.5*(pot_it(rd,zd,phid) + pot_it(rd+1,zd,phid))
+          pot_e = 0.5*(pot_it(re,ze,phie) + pot_it(re+1,ze,phie))
+          
           psi_a = 0.5*(psi(ra,phia) + psi(ra-1,phia))          
           psi_b = 0.5*(psi(rb,phib) + psi(rb+1,phib))                    
           psi_c = 0.5*(psi(rc,phic) + psi(rc+1,phic))
           psi_d = 0.5*(psi(rd,phid) + psi(rd+1,phid))
+          psi_e = 0.5*(psi(re,phie) + psi(re+1,phie))
           
-          rho_1d = 0.5*(rho(rd,zd,phid) + rho(rd+1,zd,phid))
-          rho_c1d=rho_1d*muc1/mu1
 
-          
           omsq(q) = - (pot_a-pot_b)/(psi_a-psi_b)
-                   
+          
           c1(q) = pot_b + omsq(q)*psi_b
           c2(q) = pot_c + omsq(q)*psi_c
-
-          
+       
+          rho_1d = 0.5*(rho(rd,zd,phid) + rho(rd+1,zd,phid))
+          rho_c1d=rho_1d*muc1/mu1       
           h_e1d = c1(q) - pot_d - omsq(q)*psi_d
-          h_c1d = h_e1d * (nc1+1)/(n1+1)*mu1/muc1          
+          h_c1d = h_e1d * (nc1+1)/(n1+1)*mu1/muc1                    
+          cc1(q) = h_c1d + pot_d+ omsq(q)*psi_d 
           
-          cc1(q) = h_c1d + pot_d+ omega_sq_d*psi_d 
+          rho_2e = 0.5*(rho(re,ze,phie) + rho(re+1,ze,phie))
+          rho_c2e=rho_2e*muc2/mu2       
+          h_e2e = c2(q) - pot_e - omsq(q)*psi_e
+          h_c2e = h_e2e * (nc2+1)/(n2+1)*mu2/muc2                    
+          cc2(q) = h_c2e + pot_e+ omsq(q)*psi_e           
+         
           
  print*, "rho_1d = ", rho_1d, "rho_c1d = ", rho_c1d
  print*, "omsq(q) = ", omsq(q), "c1(q) = ", c1(q)
@@ -340,7 +353,11 @@
           do i = phi2,phi3+1
              do j = 2,numz
                 do k = 2,rmax
-                   h(k,j,i) = c2(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)
+                   if (rho(k,j,i).gt.rho_2e) then
+                      h(k,j,i) = cc2(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)
+                   else
+                      h(k,j,i) = c2(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)   
+                   endif
                    if(h(k,j,i).gt.hm2(q)) then
                       hm2(q) = h(k,j,i)
                       rm2 = k
@@ -370,7 +387,9 @@
    
           
           norm1 = mu1/muc1*(h_c1d/hm1(q))**nc1        
-
+          norm2 = mu2/muc2*(h_c2e/hm2(q))**nc2
+          
+          
 print*, "norm1", norm1
 print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
           
@@ -394,9 +413,13 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
              do j = 2,numz
                 do k = 2,numr
                    if(h(k,j,i).gt.0.0) then
-                      rho(k,j,i) = rhom2*(h(k,j,i)/hm2(q))**n1
-                   else
-                      rho(k,j,i) = 0.0
+                      if (rho(k,j,i).gt.rho_2e) then	   
+                         rho(k,j,i) = rhom2*(h(k,j,i)/hm2(q))**nc2
+                      else
+                         rho(k,j,i) = rhom2*norm2*(h(k,j,i)/hm2(q))**n2
+                      endif
+                   else   
+                      rho(k,j,i) = 0.0	   
                    endif
                 enddo
              enddo
@@ -524,7 +547,7 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
            write(10,*)
          enddo
        close(10)       
-       
+      print*, "star2" 
        
        
        
@@ -547,7 +570,7 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        enddo
        call bin_sum(temp, ret1, ret2)
        s1 = factor*ret1/(n1+1.0)
-       s2 = factor*ret2/(n1+1.0)
+       s2 = factor*ret2/(n2+1.0)    
        stot = s1 + s2
        
        !  Compute total potential energy of each star
@@ -580,9 +603,9 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        virialerr1 = abs(2.0*t1 + 3.0*s1 + w1) / abs(w1)
        virialerr2 = abs(2.0*t2 + 3.0*s2 + w2) / abs(w2)
        pm1 = rho(rm1,zm1,phim1)*hm1(qfinal)/(n1+1.0)
-       pm2 = rho(rm2,zm2,phim2)*hm2(qfinal)/(n1+1.0)
-       kappa1 = pm1/rhom1**gamma
-       kappa2 = pm2/rhom2**gamma
+       pm2 = rho(rm2,zm2,phim2)*hm2(qfinal)/(n2+1.0)
+       kappa1 = pm1/rhom1**gamma1
+       kappa2 = pm2/rhom2**gamma2
        period = 2.0*pi/omega
        kepler = (separation**3)*omega*omega /                          &
                (mass1(qfinal)+mass2(qfinal))
@@ -601,16 +624,51 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        jtot = j1 + j2
 
        !  Calculate internal energies
-       do i = 1, numphi
+!       do i = 1, numphi
+!          do j = 2, numz
+!             do k = 2, numr
+!                temp(k,j,i) = rhf(k)*rho(k,j,i)**gamma   
+!             enddo
+!          enddo
+!       enddo
+       
+!!Replaced above sum (using only gamma) with the following       
+       
+       do i = phi2, phi3
           do j = 2, numz
              do k = 2, numr
-                temp(k,j,i) = rhf(k)*rho(k,j,i)**gamma
+                temp(k,j,i) = rhf(k)*rho(k,j,i)**gamma2   
              enddo
           enddo
        enddo
+       do i = phi4, numphi
+          do j = 2, numz
+             do k = 2, numr
+                temp(k,j,i) = rhf(k)*rho(k,j,i)**gamma1   
+             enddo
+          enddo
+       enddo
+       do i = 1, phi1
+          do j = 2, numz
+             do k = 2, numr
+                temp(k,j,i) = rhf(k)*rho(k,j,i)**gamma1   
+             enddo
+          enddo
+       enddo
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
        call bin_sum(temp, ret1, ret2)
        e1 = n1*factor*kappa1*ret1
-       e2 = n1*factor*kappa2*ret2
+       e2 = n2*factor*kappa2*ret2
        etot = e1 + e2
 
        !  Calculate total energoies
@@ -967,7 +1025,9 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        write(15) rho
        close(15) 
 
-       
+       open(unit=15,file='density_math',form='unformatted',convert='BIG_ENDIAN',status='unknown')
+       write(15) rho
+       close(15) 
 
        
        open(unit=10,file="pot1")
@@ -979,8 +1039,14 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
          enddo
        close(10)  
        
-       
-       
+       open (unit=13,file="gnu")
+         do i=1, numr
+           do j= 1,numphi
+             write(13,*) j*dphi, i*dr, rho(i,2,j)
+           enddo
+           write(13,*)
+         enddo
+       close(13)
  
        
        open(unit=10,file="pot2")
