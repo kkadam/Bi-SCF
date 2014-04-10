@@ -10,11 +10,11 @@
        real, dimension(numz) :: z, zhf
        real, dimension(numphi) :: phi, sine, cosine
        real :: com, pi, rhom1, rhom2, ret1, ret2, dr, dz, dphi, dpot, dpsi
-       real :: factor, gamma1, gamma2, cnvgom, cnvgc1, cnvgc2, cnvgh1, cnvgh2
+       real :: factor, cnvgom, cnvgc1, cnvgc2, cnvgh1, cnvgh2
        real :: s1, s2, stot, t1, t2, ttot, w1, w2, wtot, j1, j2, jtot
        real :: e1, e2, etot, en1, en2, entot, pm1, pm2, virialerr, virialerr1
        real :: virialerr2, eps, position, separation, xavg1, xavg2
-       real :: yavg1, yavg2, kappa1, kappa2, vol1, vol2, reff1, reff2
+       real :: yavg1, yavg2, vol1, vol2, reff1, reff2
        real :: rchmax, rchmin, xcrit, rpotcrit, volr1, volr2, reffr1, reffr2
        real :: rchtest, curvature, omega
        real :: pot_a, pot_b, pot_c, pot_d, pot_e, psi_a, psi_b, psi_c, psi_d, psi_e
@@ -42,7 +42,11 @@
        double precision :: phid, zd, rho_c1d, rho_1d, &
        h_c1d, h_e1d, norm1
        double precision :: phie, ze, rho_c2e, rho_2e, &
-       h_c2e, h_e2e, norm2
+       h_c2e, h_e2e, norm2, rhome1, rhome2, gammac1, gammac2, gammae1,gammae2, &
+       kappac1,kappac2, kappae1,kappae2,rem1, zem1, phiem1, rem2, &
+       zem2, phiem2, rhoem1, rhoem2
+       real, dimension(maxit) :: hem1, hem2
+       
        
        call cpu_time(stime)
       
@@ -90,8 +94,10 @@
        
        
        rmax = numr - 8
-       gamma1 = 1.0 + 1.0/n1
-       gamma2 = 1.0 + 1.0/n2
+       gammae1 = 1.0 + 1.0/n1
+       gammae2 = 1.0 + 1.0/n2
+       gammac1 = 1.0 + 1.0/nc1
+       gammac2 = 1.0 + 1.0/nc2
        epsilon = 1.0e-5
 
        dens_template = 'density'
@@ -100,6 +106,8 @@
        omsq = 0.0
        hm1 = 0.0
        hm2 = 0.0
+       hem1 = 0.0
+       hem2 = 0.0
        c1 = 0.0
        c2 = 0.0
        cc1 = 0.0
@@ -339,7 +347,15 @@
                    if (rho(k,j,i).gt.rho_1d) then
                       h(k,j,i) = cc1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)
                    else
-                      h(k,j,i) = c1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)   
+                      h(k,j,i) = c1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)  
+                      
+                      if(h(k,j,i).gt.hem1(q)) then
+                        hem1(q) = h(k,j,i)
+                        rem1 = k
+                        zem1 = j
+                        phiem1 = i
+                      endif
+
                    endif
                    if(h(k,j,i).gt.hm1(q)) then
                       hm1(q) = h(k,j,i)
@@ -356,7 +372,15 @@
                    if (rho(k,j,i).gt.rho_2e) then
                       h(k,j,i) = cc2(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)
                    else
-                      h(k,j,i) = c2(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)   
+                      h(k,j,i) = c2(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)  
+                      
+                      if(h(k,j,i).gt.hem2(q)) then
+                        hem2(q) = h(k,j,i)
+                        rem2 = k
+                        zem2 = j
+                        phiem2 = i
+                      endif
+                      
                    endif
                    if(h(k,j,i).gt.hm2(q)) then
                       hm2(q) = h(k,j,i)
@@ -373,7 +397,15 @@
                    if (rho(k,j,i).gt.rho_1d) then
                       h(k,j,i) = cc1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)
                    else
-                      h(k,j,i) = c1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)   
+                      h(k,j,i) = c1(q) - pot_it(k,j,i) - omsq(q)*psi(k,i)  
+                      
+                      if(h(k,j,i).gt.hem1(q)) then
+                        hem1(q) = h(k,j,i)
+                        rem1 = k
+                        zem1 = j
+                        phiem1 = i
+                      endif
+                      
                    endif
                    if(h(k,j,i).gt.hm1(q)) then
                       hm1(q) = h(k,j,i)
@@ -503,7 +535,7 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
           enddo
           com = factor * com / (mass1(q)+mass2(q))
 
-          !  Has solution converged sufficiently? 
+!  Has solution converged sufficiently? 
           cnvgom = abs(omsq(q)-omsq(q-1))/abs(omsq(q))
           cnvgc1 = abs(c1(q)-c1(q-1))/abs(c1(q))
           cnvgc2 = abs(c2(q)-c2(q-1))/abs(c2(q))
@@ -561,16 +593,45 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
         omega = sqrt(omsq(qfinal))
 
        !  Compute virial preasure for each star
-       do i = 1, numphi
+       	       
+       do i = phi2, phi3
           do j = 2, numz
              do k = 2, numr
-                temp(k,j,i) = rhf(k)*h(k,j,i)*rho(k,j,i)
+               if (rho(k,j,i).gt.rho_2e) then
+                 temp(k,j,i) = rhf(k)*rho(k,j,i)*h(k,j,i)/(nc2+1.0) 
+               else
+                 temp(k,j,i) = rhf(k)*rho(k,j,i)*h(k,j,i)/(n2+1.0) 
+               endif   
              enddo
           enddo
        enddo
+       do i = phi4, numphi
+          do j = 2, numz
+             do k = 2, numr
+               if (rho(k,j,i).gt.rho_1d) then
+                 temp(k,j,i) = rhf(k)*rho(k,j,i)*h(k,j,i)/(nc1+1.0) 
+               else
+                 temp(k,j,i) = rhf(k)*rho(k,j,i)*h(k,j,i)/(n1+1.0)  
+               endif
+             enddo
+          enddo
+       enddo
+       do i = 1, phi1
+          do j = 2, numz
+             do k = 2, numr
+               if (rho(k,j,i).gt.rho_1d) then
+                 temp(k,j,i) = rhf(k)*rho(k,j,i)*h(k,j,i)/(nc1+1.0)   
+               else
+                 temp(k,j,i) = rhf(k)*rho(k,j,i)*h(k,j,i)/(n1+1.0)
+               endif   
+             enddo
+          enddo
+       enddo
+       	       
+       	       
        call bin_sum(temp, ret1, ret2)
-       s1 = factor*ret1/(n1+1.0)
-       s2 = factor*ret2/(n2+1.0)    
+       s1 = factor*ret1
+       s2 = factor*ret2   
        stot = s1 + s2
        
        !  Compute total potential energy of each star
@@ -602,10 +663,22 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        virialerr = abs(2.0*ttot + 3.0*stot + wtot) / abs(wtot)
        virialerr1 = abs(2.0*t1 + 3.0*s1 + w1) / abs(w1)
        virialerr2 = abs(2.0*t2 + 3.0*s2 + w2) / abs(w2)
-       pm1 = rho(rm1,zm1,phim1)*hm1(qfinal)/(n1+1.0)
-       pm2 = rho(rm2,zm2,phim2)*hm2(qfinal)/(n2+1.0)
-       kappa1 = pm1/rhom1**gamma1
-       kappa2 = pm2/rhom2**gamma2
+       pm1 = rho(rm1,zm1,phim1)*hm1(qfinal)/(nc1+1.0)
+       pm2 = rho(rm2,zm2,phim2)*hm2(qfinal)/(nc2+1.0)
+       
+!       kappa1 = pm1/rhom1**gamma1
+!       kappa2 = pm2/rhom2**gamma2
+       
+       rhoem1 = rho(rem1,zem1,phiem1)
+       rhoem2 = rho(rem2,zem2,phiem2)
+       
+
+       kappac1 = hm1(qfinal)/(nc1+1.0)*rhom1**(gammac1)
+       kappac2 = hm2(qfinal)/(nc2+1.0)*rhom2**(gammac2)
+       kappae1 = hem1(qfinal)/(n1+1.0)*rhoem1**(gammae1)
+       kappae2 = hem2(qfinal)/(n2+1.0)*rhoem2**(gammae2)
+       
+       
        period = 2.0*pi/omega
        kepler = (separation**3)*omega*omega /                          &
                (mass1(qfinal)+mass2(qfinal))
@@ -624,51 +697,47 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        jtot = j1 + j2
 
        !  Calculate internal energies
-!       do i = 1, numphi
-!          do j = 2, numz
-!             do k = 2, numr
-!                temp(k,j,i) = rhf(k)*rho(k,j,i)**gamma   
-!             enddo
-!          enddo
-!       enddo
-       
-!!Replaced above sum (using only gamma) with the following       
+   
        
        do i = phi2, phi3
           do j = 2, numz
              do k = 2, numr
-                temp(k,j,i) = rhf(k)*rho(k,j,i)**gamma2   
+               if (rho(k,j,i).gt.rho_2e) then
+                 temp(k,j,i) = kappac2*nc2*rhf(k)*rho(k,j,i)**gammac2  
+               else
+                 temp(k,j,i) = kappae2*n2*rhf(k)*rho(k,j,i)**gammae2 
+               endif   
              enddo
           enddo
        enddo
        do i = phi4, numphi
           do j = 2, numz
              do k = 2, numr
-                temp(k,j,i) = rhf(k)*rho(k,j,i)**gamma1   
+               if (rho(k,j,i).gt.rho_1d) then
+                 temp(k,j,i) = kappac1*nc1*rhf(k)*rho(k,j,i)**gammac1   
+               else
+                 temp(k,j,i) = kappae1*n1*rhf(k)*rho(k,j,i)**gammae1 
+               endif
              enddo
           enddo
        enddo
        do i = 1, phi1
           do j = 2, numz
              do k = 2, numr
-                temp(k,j,i) = rhf(k)*rho(k,j,i)**gamma1   
+               if (rho(k,j,i).gt.rho_1d) then
+                 temp(k,j,i) = kappac1*nc1*rhf(k)*rho(k,j,i)**gammac1   
+               else
+                 temp(k,j,i) = kappae1*n1*rhf(k)*rho(k,j,i)**gammae1 
+               endif   
              enddo
           enddo
        enddo
-       
-       
-       
-       
-       
-       
-       
-       
-       
+
        
        
        call bin_sum(temp, ret1, ret2)
-       e1 = n1*factor*kappa1*ret1
-       e2 = n2*factor*kappa2*ret2
+       e1 = factor*ret1
+       e2 = factor*ret2
        etot = e1 + e2
 
        !  Calculate total energoies
@@ -921,7 +990,12 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        write(11,*) 'Mass 1: ',mass1(qfinal)
        write(11,*) '(x,y): ',xavg1, yavg1
        write(11,*) 'Maximum density: ',rhom1
-       write(11,*) 'Polytropic Constant: ',kappa1
+       write(11,*) 'Polytropic Index Core: ',nc1
+       write(11,*) 'Polytropic Index Envelope: ',n1       
+       write(11,*) 'Polytropic Constant Core: ',kappac1
+       write(11,*) 'Polytropic Constant Envelope: ',kappae1 
+       write(11,*) 'Integration constant for core: ', cc1(qfinal)
+       write(11,*) 'Integration constant for envelope: ', c1(qfinal)
        write(11,*) 'Virial Preasure:',s1
        write(11,*) 'Potential Energy:',w1
        write(11,*) 'Kinetic Energy:',t1
@@ -950,7 +1024,12 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        write(11,*) 'Mass:',mass2(qfinal)
        write(11,*) '(x,y): ',xavg2, yavg2
        write(11,*) 'Maximum density: ',rhom2
-       write(11,*) 'Polytropic Constant: ',kappa2
+       write(11,*) 'Polytropic Index Core: ',nc2
+       write(11,*) 'Polytropic Index Envelope: ',n2       
+       write(11,*) 'Polytropic Constant Core: ',kappac2
+       write(11,*) 'Polytropic Constant Envelope: ',kappae2   
+       write(11,*) 'Integration constant for core: ', cc2(qfinal)
+       write(11,*) 'Integration constant for envelope: ', c2(qfinal)
        write(11,*) 'Virial Preasure:',s2
        write(11,*) 'Potantial Energy:',w2
        write(11,*) 'Kinetic Energy:',t2
@@ -980,8 +1059,6 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        write(11,*) 'Angular frequncy: ', sqrt(omsq(qfinal))
        write(11,*) 'Period: ',period
        write(11,*) 'Keplers 3rd constant: ',kepler
-       write(11,*) 'Integration constant 1: ', c1(qfinal)
-       write(11,*) 'Integration constant 2: ', c2(qfinal)
        write(11,*) 'Total Angular Momentum: ',jtot
        write(11,*) 'Total Energy: ',entot
        write(11,*) 
@@ -1007,7 +1084,7 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        write(11,*)
 
 
-       write(12,*) model_num,ra,rb,rc,rhom1,rhom2,kappa1,kappa2,           &
+       write(12,*) model_num,ra,rb,rc,rhom1,rhom2,kappac1,kappae1,kappac2,kappae2, &
                   mass1(qfinal),mass2(qfinal),mass1(qfinal)/mass2(qfinal), &
                   vol1/volr1,vol2/volr2,virialerr,com,xcrit,qfinal
 
