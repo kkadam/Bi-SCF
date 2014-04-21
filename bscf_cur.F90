@@ -433,7 +433,8 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
                       if (rho(k,j,i).gt.rho_1d) then	   
                          rho(k,j,i) = rhom1*(h(k,j,i)/hm1(q))**nc1
                       else
-                         rho(k,j,i) = rhom1*norm1*(h(k,j,i)/hm1(q))**n1
+                      	 rho(k,j,i) = rhom1*norm1*(h(k,j,i)/h_e1d)**n1
+                         !rho(k,j,i) = rhom1*norm1*(h(k,j,i)/hm1(q))**n1
                       endif
                    else   
                       rho(k,j,i) = 0.0	   
@@ -448,7 +449,8 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
                       if (rho(k,j,i).gt.rho_2e) then	   
                          rho(k,j,i) = rhom2*(h(k,j,i)/hm2(q))**nc2
                       else
-                         rho(k,j,i) = rhom2*norm2*(h(k,j,i)/hm2(q))**n2
+                      	 rho(k,j,i) = rhom2*norm2*(h(k,j,i)/h_e2e)**n2
+                         !rho(k,j,i) = rhom2*norm2*(h(k,j,i)/hm2(q))**n2
                       endif
                    else   
                       rho(k,j,i) = 0.0	   
@@ -463,7 +465,8 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
                       if (rho(k,j,i).gt.rho_1d) then	   
                          rho(k,j,i) = rhom1*(h(k,j,i)/hm1(q))**nc1
                       else
-                         rho(k,j,i) = rhom1*norm1*(h(k,j,i)/hm1(q))**n1
+                      	 rho(k,j,i) = rhom1*norm1*(h(k,j,i)/h_e1d)**n1
+                         !rho(k,j,i) = rhom1*norm1*(h(k,j,i)/hm1(q))**n1
                       endif
                    else   
                       rho(k,j,i) = 0.0	   
