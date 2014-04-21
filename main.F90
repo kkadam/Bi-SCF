@@ -11,5 +11,8 @@
        
        close(11)
        close(12)
-
+       
+       print*, "File output printed"
+       print*, "File summary printed"
+       
        end program main

@@ -572,7 +572,7 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
            write(10,*)
          enddo
        close(10)       
-       print*, "star1"
+       print*, "File star1 printed"
        
        open(unit=10,file="star2")
          do j=1,numz
@@ -582,7 +582,7 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
            write(10,*)
          enddo
        close(10)       
-      print*, "star2" 
+      print*, "File star2 printed" 
        
        
        
@@ -1097,46 +1097,17 @@ print*, "hm1(q)",hm1(q), "hm2(q)", hm2(q), "muc1", muc1
        close(13)
 
 !FOR WRITING OUT A MODEL TO BE RUN BY THE HYDRODYNAMICS CODE
-       open(unit=14,file='roche_pot',form='unformatted',status='unknown')
+       open(unit=14,file='roche_pot.bin',form='unformatted',status='unknown')
        write(14) rchpot
        close(14)
-
-       open(unit=15,file='density',form='unformatted',status='unknown')
+       print*, "File rhcpot.bin printed"
+       
+       
+       open(unit=15,file='density.bin',form='unformatted',convert='BIG_ENDIAN',status='unknown')
        write(15) rho
        close(15) 
+       print*, "File density.bin printed"
 
-       open(unit=15,file='density_math',form='unformatted',convert='BIG_ENDIAN',status='unknown')
-       write(15) rho
-       close(15) 
-
-       
-       open(unit=10,file="pot1")
-         do j=1,numz
-           do i=1,numr  
-             write(10,*) i,j,pot(i,j,1) 
-           enddo
-           write(10,*)
-         enddo
-       close(10)  
-       
-       open (unit=13,file="gnu")
-         do i=1, numr
-           do j= 1,numphi
-             write(13,*) j*dphi, i*dr, rho(i,2,j)
-           enddo
-           write(13,*)
-         enddo
-       close(13)
- 
-       
-       open(unit=10,file="pot2")
-         do j=1,numz
-           do i=1,numr  
-             write(10,*) i,j,pot(i,j,256) 
-           enddo
-           write(10,*)
-         enddo
-       close(10)
        
        end subroutine binary_scf
 

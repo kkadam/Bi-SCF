@@ -5,6 +5,7 @@ numz=256
 numphi=512
 pi=3.1415
 
+device, decomposed =0
 loadct,39
 
 rho=dblarr(numr,numz,numphi)
@@ -14,7 +15,7 @@ openr,1,'density_math',/f77_unformatted,/swap_endian
 readu,1,rho
 close,1
 
-;contour,rho(*,*,1)^0.2,nlevels=250,/fill
+contour,rho(*,*,1)^0.2,nlevels=250,/fill
 
 R=dblarr(numr)
 theta=dblarr(numphi)
@@ -38,7 +39,7 @@ cc=indgen(210)+40
 
 ;Kundan thinks that Chris is dumb
 
-polar_contour, rho_eq, theta, R, /DITHER, /fill, nlevels=210,$
+polar_contour, rho_eq^0.2, theta, R, /DITHER, /fill, nlevels=210,$
 	c_colors=cc
 
 end
