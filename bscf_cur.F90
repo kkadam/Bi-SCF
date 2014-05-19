@@ -261,6 +261,7 @@
           !  Solve Poisson's equation for gravitational potential, calculate
           !  the new centrifugal potential, angular frequency and integration
           !  constants
+          print*, "iteration number = ",q
           if( q == 2 ) then
              call setbdy(icall,isym)
              call bdygen(maxterm,isym,redge)
